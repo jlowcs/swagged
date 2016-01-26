@@ -1,0 +1,18 @@
+{
+  "name": "swagged",
+  "main": "app://swagged/swagger-editor/index.html",
+  "version": "0.0.1",
+  "licence": "MIT",
+  "window": {
+    "width": 1000,
+    "height": 800,
+    "min_width": 640,
+    "min_height": 480,
+    "toolbar": false,
+    "show": true,
+    "icon": "swagger-editor/images/swagger-logo.png"
+  },
+  "scripts": {
+    "build": "nwbuild -p osx32,osx64,linux32,linux64,win32,win64 -o ../swagged_build --buildType versioned ./"
+  }
+}
