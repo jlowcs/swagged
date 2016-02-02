@@ -3,13 +3,14 @@
   "main": "app://swagged/swagger-editor/index.html",
   "version": "0.0.1",
   "licence": "MIT",
+  "single-instance": false,
   "window": {
     "width": 1000,
     "height": 800,
     "min_width": 640,
     "min_height": 480,
     "toolbar": false,
-    "show": true,
+    "show": false,
     "icon": "swagger-editor/images/swagger-logo.png"
   },
   "scripts": {

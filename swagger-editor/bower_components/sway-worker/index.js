@@ -97,6 +97,7 @@
                     }
                     return definition.createSwaggerApi(apiDefinition, options)
                 });
+
                 if (!_.isUndefined(callback) && _.isFunction(callback)) {
                     allTasks = allTasks.then(function(swaggerApi) {
                         callback(undefined, swaggerApi)
@@ -13004,10 +13005,12 @@
                     } else {
                         allTasks = allTasks.then(JSON.parse)
                     }
-                    allTasks = allTasks.then(function(nJson) {
-                        remoteCache[url] = nJson;
-                        return nJson
-                    })
+                    if (options.useCache !== false) {
+	                    allTasks = allTasks.then(function(nJson) {
+	                        remoteCache[url] = nJson;
+	                        return nJson
+	                    })
+	                }
                 }
                 allTasks = allTasks.then(function(nJson) {
                     return _.cloneDeep(nJson)
@@ -13277,7 +13280,7 @@
                                 return getRemoteJson(remoteLocation, options).then(function(remoteJson) {
                                     return remoteJson
                                 }, function(err) {
-                                    return err
+                                    return _.isError(err) ? err : new Error(err);
                                 }).then(function(response) {
                                     var refBase = refParts[0];
                                     var rOptions = _.cloneDeep(options);
@@ -26342,8 +26345,27 @@
         }],
         199: [function(require, module, exports) {
             "use strict";
-            module.exports.load = function(location, options, callback) {
-                callback(new TypeError("The 'file' scheme is not supported in the browser"))
+            module.exports.load = function (location, options, callback) {
+                var xhr = new XMLHttpRequest();
+
+                if ('onload' in xhr) {
+                    xhr.onerror = function () {
+                        callback("Could not resolve " + location + " (not found or cross-origin issue)");
+                    }
+
+                    xhr.onload = function () {
+                        callback(undefined, xhr.responseText);
+                    }
+	        } else {
+                    xhr.onreadystatechange = function() {
+			if (xhr.readyState == XMLHttpRequest.DONE) {
+                            callback(undefined, xhr.responseText);
+                        }
+                    }
+                }
+
+                xhr.open("GET", location, true);
+                xhr.send();
             }
         }, {}],
         200: [function(require, module, exports) {
@@ -29911,7 +29933,7 @@
                             delete schema.__$refResolved;
                             for (key in from) {
                                 if (from.hasOwnProperty(key)) {
-                                    to[key] = from[key]
+                                    to[key] = from [key]
                                 }
                             }
                         }
@@ -30323,6 +30345,7 @@ onmessage = function(message) {
                 errors: sanitizeErrors(api.getLastErrors()),
                 warnings: api.getLastWarnings()
             })
+            return;
         }
         postMessage({
             errors: [],

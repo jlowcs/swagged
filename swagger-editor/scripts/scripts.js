@@ -161,6 +161,8 @@ SwaggerEditor.controller("MainCtrl", ["$scope", "$rootScope", "$stateParams", "$
     $("body").addClass(defaults.brandingCssClass);
     loadYaml();
 
+    $scope.dropDisabled = (defaults.dropEnabled === false);
+
     function loadYaml() {
         Storage.load("yaml").then(function(yaml) {
             var url;
@@ -453,7 +455,8 @@ SwaggerEditor.controller("EditorCtrl", ["$scope", "$rootScope", "Editor", "Build
     Editor.ready(function() {
         Storage.load("yaml").then(function(yaml) {
             $rootScope.editorValue = yaml;
-            onAceChange(true)
+            window.e.session.getUndoManager().markClean(); //dirty handling
+            debouncedOnAceChange()
         })
     });
 
@@ -464,7 +467,7 @@ SwaggerEditor.controller("EditorCtrl", ["$scope", "$rootScope", "Editor", "Build
     }
 }]);
 "use strict";
-SwaggerEditor.controller("PreviewCtrl", ["Storage", "Builder", "ASTManager", "Editor", "FocusedPath", "TagManager", "Preferences", "FoldStateManager", "$scope", "$rootScope", "$stateParams", "$sessionStorage", function PreviewCtrl(Storage, Builder, ASTManager, Editor, FocusedPath, TagManager, Preferences, FoldStateManager, $scope, $rootScope, $stateParams, $sessionStorage) {
+SwaggerEditor.controller("PreviewCtrl", ["Storage", "Builder", "ASTManager", "Editor", "FocusedPath", "TagManager", "Preferences", "FoldStateManager", "$scope", "$rootScope", "$stateParams", "$sessionStorage", "$timeout", function PreviewCtrl(Storage, Builder, ASTManager, Editor, FocusedPath, TagManager, Preferences, FoldStateManager, $scope, $rootScope, $stateParams, $sessionStorage, $timeout) {
     $scope.loadLatest = loadLatest;
     $scope.tagIndexFor = TagManager.tagIndexFor;
     $scope.getAllTags = TagManager.getAllTags;
@@ -491,6 +494,10 @@ SwaggerEditor.controller("PreviewCtrl", ["Storage", "Builder", "ASTManager", "Ed
         Builder.buildDocs(latest).then(onBuildSuccess, onBuildFailure)
     }
 
+    $scope.$on('update-preview', function () {
+        update($rootScope.editorValue, true);
+    });
+
     function onBuild(result) {
         $scope.$broadcast("toggleWatchers", true);
         if (result.specs && result.specs.securityDefinitions) {
@@ -508,6 +515,12 @@ SwaggerEditor.controller("PreviewCtrl", ["Storage", "Builder", "ASTManager", "Ed
             $rootScope.errors = result.errors || [];
             $rootScope.warnings = result.warnings || []
         })
+        //there are 2 digests before the view is updated
+        $timeout(function () {
+            $timeout(function () {
+                $scope.$emit("previewUpdate");
+            });
+        });
     }
 
     function onBuildSuccess(result) {
@@ -2108,7 +2121,7 @@ SwaggerEditor.service("Editor", ["Autocomplete", "ASTManager", "LocalStorage", "
     this.focus = focus
 }]);
 "use strict";
-SwaggerEditor.service("Builder", ["SwayWorker", function Builder(SwayWorker) {
+SwaggerEditor.service("Builder", ["SwayWorker", "defaults", function Builder(SwayWorker, defaults) {
     var load = _.memoize(jsyaml.load);
 
     function buildDocs(stringValue) {
@@ -2142,7 +2155,8 @@ SwaggerEditor.service("Builder", ["SwayWorker", function Builder(SwayWorker) {
             SwayWorker.run({
                 definition: json,
                 jsonRefs: {
-                    location: window.location.href.replace(/#.+/, "").replace(/\/$/, "")
+                    location: defaults.jsonRefsBase || window.location.href.replace(/#.+/, "").replace(/\/$/, ""),
+                    useCache: defaults.jsonRefsCache
                 }
             }, function(data) {
                 if (data.errors.length) {
